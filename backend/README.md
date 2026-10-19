@@ -32,29 +32,52 @@ $ pnpm install
 $ pnpm run db:generate
 ```
 
-## Database
+## Prisma and database setup
 
-This backend uses PostgreSQL through Prisma 7. Put one connection string in
-`.env`:
+This backend uses PostgreSQL with Prisma 7 and the `@prisma/adapter-pg` driver.
+Run these steps from the `backend` directory.
 
 ```env
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE_NAME?schema=public"
 ```
 
-Keep `.env` private and make sure the PostgreSQL server and named database exist.
-Prisma reads this variable from `prisma.config.ts`; NestJS reads it when creating
-the Prisma client.
+Replace the placeholders in `DATABASE_URL` with your PostgreSQL credentials and
+database name. Keep `.env` private and do not commit it. Prisma loads this
+setting through `prisma.config.ts`; `PrismaService` uses it to connect. The
+connection string format is
+`postgresql://USER:PASSWORD@HOST:5432/DATABASE_NAME?schema=public`.
 
-Add your models to `prisma/schema.prisma`, then run:
+1. Start a PostgreSQL server and create an empty database for the application
+   (for example, `nest_app`).
+2. Add your database connection string to `backend/.env`.
+3. Install dependencies and generate the Prisma client:
 
 ```bash
+pnpm install
 pnpm db:generate
+```
+
+4. Create and apply the initial database migration:
+
+```bash
 pnpm db:migrate --name init
 ```
 
-For each schema change, run `pnpm db:migrate --name describe_change`. The client
-is generated under `src/generated/prisma`. `PrismaService` is provided globally,
-so inject it into a service to query the database:
+This applies the schema in `prisma/schema.prisma` and saves the migration in
+`prisma/migrations`. For later schema changes, edit the schema and run
+`pnpm db:migrate --name describe_change`.
+5. Start the NestJS application:
+
+```bash
+pnpm run start:dev
+```
+
+`PrismaService` calls `$connect()` when the Nest app starts and disconnects
+when it shuts down. If the database connection fails, startup reports an
+error. The generated client is located in `src/generated/prisma`.
+
+`PrismaModule` provides `PrismaService` globally, so inject it into a service to
+query the database:
 
 ```ts
 constructor(private readonly prisma: PrismaService) {}
